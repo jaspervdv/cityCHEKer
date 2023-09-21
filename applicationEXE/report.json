@@ -1,0 +1,114 @@
+{
+  "all_errors": [
+    208
+  ],
+  "dataset_errors": [],
+  "features": [
+    {
+      "errors": [],
+      "id": "Buerogebaeude",
+      "primitives": [
+        {
+          "id": "0",
+          "numberfaces": 1,
+          "numbervertices": 4,
+          "type": "MultiSurface",
+          "validity": true
+        },
+        {
+          "id": "1",
+          "numberfaces": 1,
+          "numbervertices": 12,
+          "type": "MultiSurface",
+          "validity": true
+        },
+        {
+          "errors": [],
+          "id": "2",
+          "numberfaces": 6,
+          "numbershells": 1,
+          "numbervertices": 8,
+          "type": "Solid",
+          "validity": true
+        },
+        {
+          "errors": [],
+          "id": "3",
+          "numberfaces": 14,
+          "numbershells": 1,
+          "numbervertices": 24,
+          "type": "Solid",
+          "validity": true
+        },
+        {
+          "errors": [],
+          "id": "4",
+          "numberfaces": 40,
+          "numbershells": 1,
+          "numbervertices": 85,
+          "type": "Solid",
+          "validity": true
+        },
+        {
+          "errors": [],
+          "id": "5",
+          "numberfaces": 34,
+          "numbershells": 1,
+          "numbervertices": 78,
+          "type": "Solid",
+          "validity": true
+        },
+        {
+          "errors": [
+            {
+              "code": 208,
+              "description": "ORIENTATION_RINGS_SAME",
+              "id": "0 | 2",
+              "info": "same orientation for outer and inner rings",
+              "type": "Error"
+            }
+          ],
+          "id": "6",
+          "numberfaces": 83,
+          "numbershells": 1,
+          "numbervertices": 174,
+          "type": "Solid",
+          "validity": false
+        }
+      ],
+      "type": "Building",
+      "validity": false
+    }
+  ],
+  "features_overview": [
+    {
+      "total": 1,
+      "type": "Building",
+      "valid": 0
+    }
+  ],
+  "input_file": "C:\\Users\\Jasper\\Documents\\1_projects\\IFCEnvelopeExtraction\\IFC_BuildingEnvExtractor\\exports\\AC20-Institute-Var-2.city.json",
+  "input_file_type": "CityJSON",
+  "parameters": {
+    "overlap_tol": -1.0,
+    "planarity_d2p_tol": 0.01,
+    "planarity_n_tol": 20.0,
+    "snap_tol": 0.001
+  },
+  "primitives_overview": [
+    {
+      "total": 5,
+      "type": "Solid",
+      "valid": 4
+    },
+    {
+      "total": 2,
+      "type": "MultiSurface",
+      "valid": 2
+    }
+  ],
+  "time": "Fri Mar 24 14:40:13 2023 W. Europe Standard Time",
+  "type": "val3dity_report",
+  "val3dity_version": "2.3.1",
+  "validity": false
+}
