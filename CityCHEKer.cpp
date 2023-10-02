@@ -1,12 +1,11 @@
-// CityCHEKer.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
 #include <algorithm>
 #include <iostream>
 #include <string>
 #include <iostream>
 #include <fstream>
 #include <vector>
+
+#include <nlohmann/json.hpp>
 
 #include <Windows.h>
 #include <strsafe.h>
@@ -37,7 +36,7 @@ int checkInput(int argCount, char** argValues) {
 }
 
 
-int callValidator(const std::string& exePath, const std::string& consoleCommand, bool castToFile) {
+int callValidator(const std::string& exePath, const std::string& consoleCommand, bool castToFile, const std::string& castingFilePath = "") {
 
 	HANDLE g_hChildStd_OUT_Rd = NULL;
 	HANDLE g_hChildStd_OUT_Wr = NULL;
@@ -61,26 +60,46 @@ int callValidator(const std::string& exePath, const std::string& consoleCommand,
 	std::string augmentedExePath = exePath + " " + consoleCommand;
 	LPSTR augmentedExePathLPSTR = const_cast<char*>(augmentedExePath.c_str());
 
-	ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
-	ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
-	siStartInfo.cb = sizeof(STARTUPINFO);
-	siStartInfo.hStdError = g_hChildStd_OUT_Wr;
-	siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
-	siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+	ZeroMemory(&piProcInfo, sizeof(piProcInfo));
+	ZeroMemory(&siStartInfo, sizeof(siStartInfo));
 
-	bSuccessProcess = CreateProcessA
+	if (castToFile)
+	{
+		siStartInfo.cb = sizeof(STARTUPINFO);
+		siStartInfo.hStdError = g_hChildStd_OUT_Wr;
+		siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
+		siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+	}
+
+	if (!CreateProcess
 	(
 		exePath.c_str(),
 		augmentedExePathLPSTR,
 		NULL,
 		NULL,
-		TRUE,
-		0,
+		castToFile,
+		CREATE_NO_WINDOW,
 		NULL,
 		NULL,
 		&siStartInfo,
 		&piProcInfo
-	);
+	))
+	{
+		std::cout << "Unable to start " << exePath << std::endl;
+		return 0;
+	}
+
+	ResumeThread(piProcInfo.hThread);
+	DWORD dwExitCode;
+	//DWORD dwExitCode;
+	if (WaitForSingleObject(piProcInfo.hProcess, INFINITE) == WAIT_OBJECT_0) {
+		if (GetExitCodeProcess(piProcInfo.hProcess, &dwExitCode)) {
+			if (dwExitCode == STILL_ACTIVE) { std::cout << exePath + " is still active." << std::endl; }
+			else { std::cout << exePath + " has terminated with exit code: " << dwExitCode << std::endl; }
+		}
+		else { std::cerr << "Error getting exit code: " << GetLastError() << std::endl; }
+	}
+	else { std::cerr << "WaitForSingleObject failed: " << GetLastError() << std::endl; }
 
 	CloseHandle(piProcInfo.hProcess);
 	CloseHandle(piProcInfo.hThread);
@@ -89,7 +108,7 @@ int callValidator(const std::string& exePath, const std::string& consoleCommand,
 	if (!castToFile) { return 1; }
 
 	std::ofstream castingFile;
-	castingFile.open("~temp.txt", std::ofstream::out | std::ofstream::trunc);
+	castingFile.open(castingFilePath, std::ofstream::out | std::ofstream::trunc);
 	const int bufferSize = 4096;
 
 	DWORD dwRead, dwWritten;
@@ -101,23 +120,44 @@ int callValidator(const std::string& exePath, const std::string& consoleCommand,
 	{
 		bSuccessCCatch = ReadFile(g_hChildStd_OUT_Rd, chBuf, bufferSize, &dwRead, NULL);
 		if (!bSuccessCCatch || dwRead == 0) break;
-
-		std::string t = chBuf;
-		std::vector<std::string> ansiiStringList = { "[1m", "[0m", "�", "", "nts", "", "", "=[0m", "✅"};
-
-		for (size_t i = 0; i < ansiiStringList.size(); i++)
-		{
-			std::string::size_type j = t.find(ansiiStringList[i]);
-			if (j != std::string::npos)
-				t.erase(j, ansiiStringList[i].length());
-		}
-		castingFile << t;
+		castingFile << chBuf;
 	}
 
 	castingFile.close();
 	return 1;
 }
 
+
+bool cjvalValid(const std::string& path) {
+	std::fstream  infile(path);
+	if (infile.is_open()) {   //checking whether the file is open
+		std::string subLine;
+		while (std::getline(infile, subLine)) { //read data from file object and put it into string.
+			if (subLine == "File is valid") { return true; }
+		}
+		infile.close(); //close the file object.
+	}
+	return false;
+}
+
+bool val3dityValid(const std::string& path) {
+	std::ifstream infile(path);
+
+	nlohmann::json inJson = nlohmann::json::parse(infile);
+
+	if (!inJson.contains("all_errors"))
+	{
+		return false;
+	}
+
+	if (inJson["all_errors"].size() != 0)
+	{
+		return false;
+	}
+
+
+	return true;
+}
 
 std::string findPath(const std::string& pathEnd) {
 
@@ -134,9 +174,27 @@ std::string findPath(const std::string& pathEnd) {
 	return "";
 }
 
+void removeAllTemp(const std::vector<std::string>& pathList) {
+	for (size_t i = 0; i < pathList.size(); i++)
+	{
+		remove(pathList[i].c_str());
+	}
+	return;
+}
+
 int main(int argc, char** argv)
 {
 	if (!checkInput(argc, argv)) { return 0; }
+
+	std::string val3dityTPath = "temp.json";
+	std::string cjvalTPath = "temp.txt";
+	std::string valLogPath = "val3dity.log";
+
+	std::vector<std::string> PathList = { val3dityTPath, cjvalTPath, valLogPath};
+
+	// TODO: add flags & validate flags 
+	// TODO: flag store Val3Dity & cjval output
+	// TODO: flag help
 
 	std::string cjvalPath = findPath("applicationEXE/cjval.exe");
 	std::string val3dityPath = findPath("applicationEXE/val3dity.exe");
@@ -148,15 +206,45 @@ int main(int argc, char** argv)
 	}
 
 	std::cout << "[INFO] Checking Format" << std::endl;
-	if (!callValidator(cjvalPath, std::string(argv[1]), true)) { return 0; }
-
+	if (
+		!callValidator(
+			cjvalPath, 
+			std::string(argv[1]), 
+			true, 
+			cjvalTPath)
+		)
+	{ return 0; }
+	
 	std::cout << "[INFO] Checking Geometry" << std::endl;
-	if (!callValidator(val3dityPath, std::string(argv[1]) + " --report ~temp.json", false)) { return 0; }
-	//TODO: read the report txt
-	//TODO: delete the report txt
+	if (
+		!callValidator(
+			val3dityPath, 
+			std::string(argv[1]) + " --report " + val3dityTPath,
+			false)
+		) 
+	{ return 0; }
+	std::cout << std::endl;
 
-	//TODO: read the report json
-	//TODO: delete the report json
+	//read the report txt
+	if (!cjvalValid(cjvalTPath))
+	{
+		std::cout << "[WARNING] Syntax error found by cjval" << std::endl;
+		removeAllTemp(PathList);
+		return 0;
+	}
+	std::cout << "[INFO] No syntax error found valid by cjval" << std::endl;
+
+	//read the report json
+	if (!val3dityValid(val3dityTPath))
+	{
+		std::cout << "[WARNING] Invalid geometry found by val3dity" << std::endl;
+		removeAllTemp(PathList);
+		return 0;
+	}
+	std::cout << "[INFO] No invalid geometry found by val3dity" << std::endl;
+
+	// delete all temp files on exit
+	removeAllTemp(PathList);
 
 	//TODO: add custom checks
 
